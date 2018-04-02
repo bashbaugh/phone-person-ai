@@ -72,9 +72,7 @@ def programStart():
     status = waitforword([r'dial|call|connect|talk', r'cancel|shutdown|stop|shut down'],\
                          "Please speak the word: dial: into the phone: to connect your call, or: cancel: to cancel.", "r", "Goodbye.", 10)
     if status == 1 or status == fail:
-        speak('goodbye!', 'r')
-        gpio.cleanup()
-        os.abort()
+        stop()
     speak('Hello!! Thank you for calling me!')
     howAreYou()
 
@@ -88,17 +86,26 @@ def howAreYou():
     if res == 0:
         speak('O thats too bad. I hope your day gets better!')
 
-programStart()
 
 class Words:
     goodbye = re.compile(r'goodbye|by|bye|I have to go')
     thankyou = re.compile(r'thank you')
     how_are_you = re.compile(r'how are you')
     shutdown = re.compile(r'shutdown|shut down|turn yourself off|power down')
-    hello = re.compile(r'hello|hi')
+    hello = re.compile(r'hello|hi's
     ledOn = re.compile(r'turn the led|turn the light|turn on the|turn the|turn off the')
+    ihateyou = re.compile(r'I hate you|your the worst|your dum|dummy|stupid|go away|hang up')
 
 word = Words()
+
+def stop():
+    print("stopping...")
+    sleep(0.5)
+    speak("goodbye", 'r')
+    gpio.cleanup()
+    os.abort()
+
+programStart()
 
 while True:
     speech = listen()
@@ -115,12 +122,9 @@ while True:
             speak('Your Welcome!')
         elif word.shutdown.search(speech):
             speak("goodbye")
-            sleep(0.5)
-            speak("goodbye", 'r')
-            gpio.cleanup()
-            os.abort()
+            stop()
         elif word.hello.search(speech):
-            speak("Hello!")
+            speak("Hello! try asking me to turn on the l e d")
         elif word.ledOn.search(speech):
             if not red_led_state:
                 speak("I will turn the l e d on for you")
@@ -132,12 +136,20 @@ while True:
                 sleep(0.5)
                 gpio.output(red_led, 0);
                 red_led_state = False
+        elif word.ihateyou.search(speech):
+            speak("I'm sorry.. would you like me to hang up?")
+            res = waitforword([r'yes|sure|great', r'no|definitely not|nope'], 'would you like me to hang up?')
+            if res == 0:
+                speak('o k.')
+                stop()
+            if res == 1:
+                speak('o k.')
         else:
             speak("Sorry, I don't know what that means yet...")
     except TypeError:
         print('not understood')
         speak("sorry, I didn't understand you. could you say that again?")
+programStart()
 
 
-gpio.cleanup()
     
