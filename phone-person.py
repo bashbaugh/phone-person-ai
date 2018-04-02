@@ -3,11 +3,18 @@
 print("setting up")
 
 #import modules
+
 from subprocess import call
+from time import sleep
+
+call(['rm', '/home/pi/.asoundrc'])
+sleep(1)
+call(['cp', '/home/pi/.Casoundrc', '/home/pi/.asoundrc'])
+sleep(1)
+
 import pyaudio
 import speech_recognition as sr
 import re
-from time import sleep
 import os
 import RPi.GPIO as gpio
 
@@ -15,7 +22,6 @@ speaker = '--device=plughw:1,0'
 r = sr.Recognizer()
 r.energy_threshold = 4000
 fail = "fail"
-call(['cp', '~/.Casoundrc', '~/.asoundrc'])
 gpio.cleanup()
 gpio.setmode(gpio.BCM)
 red_led = 26
@@ -68,12 +74,15 @@ def waitforword(words, response='I did not understand that response...', voice='
 
 def programStart():
     print("phone person program running")
-    speak('program started', 'r')
+    speak("Please speak the word: dial: into the phone: to connect your call, or: cancel: to turn off the phone.", 'r')
     status = waitforword([r'dial|call|connect|talk', r'cancel|shutdown|stop|shut down'],\
-                         "Please speak the word: dial: into the phone: to connect your call, or: cancel: to cancel.", "r", "Goodbye.", 10)
+                         "Please speak the word: dial: into the phone: to connect your call, or: cancel: to turn off the phone.", "r", "Goodbye.", 10)
     if status == 1 or status == fail:
-        stop()
-    speak('Hello!! Thank you for calling me!')
+        stop('a')
+    play('phone-ringing.wav')
+    play('phone-ringing.wav')
+    play('phone-pickup.wav')
+    speak('Hello!! Thank you for calling me! Please be patient with me, I take a long time to answer.')
     howAreYou()
 
 
@@ -91,29 +100,35 @@ class Words:
     goodbye = re.compile(r'goodbye|by|bye|I have to go')
     thankyou = re.compile(r'thank you')
     how_are_you = re.compile(r'how are you')
-    shutdown = re.compile(r'shutdown|shut down|turn yourself off|power down')
-    hello = re.compile(r'hello|hi's
+    shutdown = re.compile(r'shutdown|shut down|turn yourself off|power down|turn the phone off')
+    hello = re.compile(r'hello|hi')
     ledOn = re.compile(r'turn the led|turn the light|turn on the|turn the|turn off the')
-    ihateyou = re.compile(r'I hate you|your the worst|your dum|dummy|stupid|go away|hang up')
+    hangup = re.compile(r'I hate you|your the worst|your dum|dummy|stupid|go away|hang up')
+    whatcanyoudo = re.compile(r'what can you do|what should I ask you|what can I')
 
 word = Words()
 
-def stop():
-    print("stopping...")
-    sleep(0.5)
-    speak("goodbye", 'r')
-    gpio.cleanup()
-    os.abort()
-
+def stop(mode='r'):
+    if mode == 'r':
+        speak('goodbye!')
+        play('phone-hangup.wav')
+        print("RESTARTING...")
+        sleep(1)
+        programStart()
+    else:
+        speak('turning phone off... goodbye.', 'r')
+        sleep(1)
+        gpio.cleanup()
+        os.abort()
+        
+speak('program started', 'r')
 programStart()
 
 while True:
     speech = listen()
     try:
         if word.goodbye.search(speech):
-            speak('You have to go? Ok! Goodbye!')
-            print("RESTARTING")
-            sleep(2)
+            speak('You have to go? Ok!')
             programStart()
         elif word.how_are_you.search(speech):
             speak("I'm good thank you,")
@@ -122,7 +137,8 @@ while True:
             speak('Your Welcome!')
         elif word.shutdown.search(speech):
             speak("goodbye")
-            stop()
+            play('phone-hangup.wav')
+            stop('a')
         elif word.hello.search(speech):
             speak("Hello! try asking me to turn on the l e d")
         elif word.ledOn.search(speech):
@@ -136,16 +152,18 @@ while True:
                 sleep(0.5)
                 gpio.output(red_led, 0);
                 red_led_state = False
-        elif word.ihateyou.search(speech):
+        elif word.hangup.search(speech):
             speak("I'm sorry.. would you like me to hang up?")
-            res = waitforword([r'yes|sure|great', r'no|definitely not|nope'], 'would you like me to hang up?')
+            res = waitforword([r'yes|sure|great|yea', r'no|definitely not|nope'], 'would you like me to hang up?')
             if res == 0:
                 speak('o k.')
                 stop()
             if res == 1:
                 speak('o k.')
+        elif word.whatcanyoudo.search(speech):
+            speak("Try asking me to turn the light on, how I am, to shutdown, you can even insult me or tell me to hang up!") 
         else:
-            speak("Sorry, I don't know what that means yet...")
+            speak("I don't know what that means.. try asking me: what can you do.")
     except TypeError:
         print('not understood')
         speak("sorry, I didn't understand you. could you say that again?")
